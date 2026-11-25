@@ -36,7 +36,8 @@ No `devcommands` needed, no cheat flag on your character or on the items.
 | `adm:players` | Players in game and their positions |
 | `adm:pos <player>` | Position of a player |
 | `adm:inv <player>` | Current inventory of a player, as known by the server |
-| `adm:give <player> <item> [amount] [quality]` | Puts items straight into the player's inventory (dropped at their feet if full) |
+| `adm:give <player> <item> [amount] [quality]` | Puts items straight into the player's inventory (dropped at their feet if full). Offline player: given at their next spawn |
+| `adm:pending [clear <player>]` | Gives waiting for offline players, or cancels a player's |
 | `adm:tp <player> <player>` | Teleports the first player next to the second |
 | `adm:tp <player> <x> <z>` | Teleports a player to coordinates (placed on the ground) |
 | `adm:portal` | Lists the portals and their positions |
@@ -62,6 +63,20 @@ No `devcommands` needed, no cheat flag on your character or on the items.
 - Every command is checked **by the server** against `adminlist.txt`. A non-admin gets *"You are not an admin of this server"* and the attempt is logged.
 - French aliases also work: `adm:joueurs`, `adm:aide`, `adm:portail`, `adm:tombe`, `adm:retirer`, `adm:competence`, `adm:soigner`, `adm:reparer`, `adm:dieu`, `adm:fantome`, `adm:vol`, `adm:degats`, `adm:minerais`, `adm:dire`, `adm:jour`, `adm:nuit`, `adm:expulser`.
 - `take`, `skill`, `heal`, `repair`, `god`, `ghost` and `fly` are applied by the player's own game: they need Emeraude Admin 1.4.0 there. God, ghost and fly modes end when the player leaves.
+
+## Commands from the server
+
+No admin online, or the game won't start? Write commands on the server, one per line, in `BepInEx/config/emeraude-admin/commands.txt` (the `adm:` prefix is optional):
+
+```bash
+echo "give Alice Copper 15" >> BepInEx/config/emeraude-admin/commands.txt
+```
+
+Within 2 seconds the server runs them, empties the file and writes each reply in `replies.log` next to it (also in the server log). They are logged in `admin.log` as `server`. `god`, `ghost`, `fly` and `damage` must name a player there.
+
+## Gives to offline players
+
+`adm:give` to a player who is offline but has already played on the server (they have a journal) keeps the items in `BepInEx/config/emeraude-admin/pending-gives.tsv`. They are given at the player's next spawn and written in their journal (`receives from … (waiting since …)`). `adm:pending` lists them, `adm:pending clear <player>` cancels them.
 
 ## The journal
 
@@ -139,7 +154,8 @@ Outils d'admin pour **serveur dédié Valheim** :
 | `adm:joueurs` (ou `adm:players`) | Joueurs en jeu et leur position |
 | `adm:pos <joueur>` | Position d'un joueur |
 | `adm:inv <joueur>` | Inventaire actuel d'un joueur |
-| `adm:give <joueur> <objet> [quantité] [qualité]` | Donne un objet directement dans l'inventaire (nom anglais du prefab : `Copper`, `Tin`, `Bronze`…) |
+| `adm:give <joueur> <objet> [quantité] [qualité]` | Donne un objet directement dans l'inventaire (nom anglais du prefab : `Copper`, `Tin`, `Bronze`…). Joueur absent : remis à sa prochaine apparition |
+| `adm:attente [clear <joueur>]` | Dons en attente pour des joueurs absents, ou annule ceux d'un joueur |
 | `adm:tp <joueur> <joueur>` | Téléporte le premier joueur à côté du second |
 | `adm:tp <joueur> <x> <z>` | Téléporte un joueur à des coordonnées |
 | `adm:portail [joueur] [nom]` | Sans argument : liste des portails. Sinon téléporte le joueur devant le portail (des deux liés, le plus loin de lui) |
@@ -162,5 +178,7 @@ Outils d'admin pour **serveur dédié Valheim** :
 Pas besoin de `devcommands` : ni le personnage ni les objets ne sont marqués « triche ».
 
 Le mod est en anglais par défaut. Pour le passer en français, mets `Language = French` dans `BepInEx/config/emeraude.admin.cfg` : sur le serveur pour le journal et les réponses aux admins, chez chaque joueur pour les messages affichés dans son jeu.
+
+Sans admin en jeu, on peut aussi écrire les commandes sur le serveur, une par ligne, dans `BepInEx/config/emeraude-admin/commands.txt` (avec ou sans `adm:`) : le serveur les exécute dans les 2 secondes, vide le fichier et écrit les réponses dans `replies.log`.
 
 Le journal est dans `BepInEx/config/journal/` sur le serveur. À chaque sauvegarde du monde, quand le jeu d'un joueur confirme que son personnage est bien enregistré, son journal est archivé (`.1.log`, `.2.log`, `.3.log`). Si son jeu plante avant, rien n'est archivé : on garde tout depuis sa dernière sauvegarde réussie, de quoi lui rendre ce qu'il a perdu.

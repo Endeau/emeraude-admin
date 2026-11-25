@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 — 2026-11-25
+- Commands from the server itself: write a command per line in `BepInEx/config/emeraude-admin/commands.txt` (with or without `adm:`). The server runs it within 2 seconds, empties the file and writes the reply in `replies.log`. No game client needed, handy over SSH after a crash.
+- `adm:give` to an offline player who has already played on the server: the items are kept in `pending-gives.tsv` and given at their next spawn, with a line in their journal.
+- New `adm:pending` (`adm:attente`) `[clear <player>]`: lists the pending gives, or cancels a player's.
+- Server-side change only: players can stay on 1.4.x (they only miss the `adm:pending` console shortcut).
+
 ## 1.4.2 — 2026-11-23
 - `adm:god` and `adm:ghost` now stay on after death and reconnection, until turned off (saved with the character).
 - New `adm:damage` (`adm:degats`) `[player] <multiplier>`: multiplies the damage dealt by a player (weapons, tools, arrows), until the game is closed.

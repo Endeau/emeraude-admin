@@ -17,7 +17,8 @@ namespace EmeraudeAdmin
     //   <Joueur>_<SteamID>.log        depuis la dernière sauvegarde de son personnage
     //   <Joueur>_<SteamID>.1.log …    périodes précédentes (Journal.KeptSaves)
     //   admin.log                     toutes les commandes admin, acceptées ou refusées
-    static class Server
+    // Commandes déposées sur le serveur et dons en attente : ServerInbox.cs
+    static partial class Server
     {
         static readonly Encoding Utf8 = new UTF8Encoding(false);
         static readonly HashSet<long> online = new HashSet<long>();
@@ -112,6 +113,7 @@ namespace EmeraudeAdmin
 
         public static void Tick()
         {
+            CheckInbox();
             foreach (var peer in InGame())
                 if (online.Add(peer.m_uid))
                     Journal(peer, peer.m_playerName, peer.m_refPos, L.T("connected", "connexion"));
@@ -161,6 +163,7 @@ namespace EmeraudeAdmin
                     inventories[sender] = items;
                     string label = kind == "apparition" ? L.T("spawned with", "apparition") : L.T("inventory", "inventaire");
                     Journal(peer, name, pos, label + L.T(": ", " : ") + Describe(items));
+                    if (kind == "apparition") DeliverPending(sender, peer, name, pos);
                     break;
             }
         }
@@ -258,17 +261,28 @@ namespace EmeraudeAdmin
                 case "give":
                 {
                     if (a.Length < 3) return L.T("Usage: adm:give <player> <item> [amount] [quality]", "Usage : adm:give <joueur> <objet> [quantité] [qualité]");
-                    var who = Find(a[1], out error);
-                    if (who == null) return error;
                     var item = FindItem(a[2]);
                     if (item == null) return L.T($"Unknown item \"{a[2]}\" (English prefab name, e.g. Copper, Tin, Bronze, Wood).", $"Objet « {a[2]} » inconnu (nom anglais du prefab, ex. Copper, Tin, Bronze, Wood).");
                     int amount = 1, quality = 1;
                     if (a.Length > 3 && (!int.TryParse(a[3], out amount) || amount < 1 || amount > 9999)) return L.T("Invalid amount (1 to 9999).", "Quantité invalide (1 à 9999).");
                     if (a.Length > 4 && (!int.TryParse(a[4], out quality) || quality < 1 || quality > 10)) return L.T("Invalid quality (1 to 10).", "Qualité invalide (1 à 10).");
+                    var who = Find(a[1], out error);
+                    if (who == null)
+                    {
+                        // Personne en ligne de ce nom : don gardé pour sa prochaine apparition
+                        if (InGame().Any(p => p.m_playerName.StartsWith(a[1], StringComparison.OrdinalIgnoreCase))) return error;
+                        string absent = FindAbsent(a[1], out error);
+                        if (absent == null) return error;
+                        QueueGive(absent, item.name, amount, quality, admin);
+                        return L.T($"{absent} is not online: {amount} {item.name} will be given at their next spawn (adm:pending).",
+                            $"{absent} n'est pas en ligne : {amount} {item.name} lui sera remis à sa prochaine apparition (adm:attente).");
+                    }
                     ZRoutedRpc.instance.InvokeRoutedRPC(who.m_uid, Net.Give, item.name, amount, quality);
                     Journal(who, who.m_playerName, who.m_refPos, L.T($"receives from {admin}: {amount} {item.name}", $"reçoit de {admin} : {amount} {item.name}") + (quality > 1 ? L.T($" (quality {quality})", $" (qualité {quality})") : ""));
                     return L.T($"{amount} {item.name} given to {who.m_playerName}.", $"{amount} {item.name} donné(s) à {who.m_playerName}.");
                 }
+                case "pending":
+                    return Pending(a);
                 case "portal":
                     return Portal(a, admin);
                 case "take":
@@ -318,6 +332,8 @@ namespace EmeraudeAdmin
                     long uid = sender;
                     string name = admin;
                     ZNetPeer peer = ZNet.instance.GetPeer(sender);
+                    if (!(a.Length > 1 && !IsState(a[1])) && FromServerFile(sender))
+                        return L.T($"From the server, name a player: {cmd} <player> [on|off]", $"Depuis le serveur, nomme un joueur : {cmd} <joueur> [on|off]");
                     if (a.Length > 1 && !IsState(a[1]))
                     {
                         peer = Find(a[1], out error);
@@ -339,6 +355,7 @@ namespace EmeraudeAdmin
                     if (a.Length < 2 || a.Length > 3 || !float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float factor)
                         || factor <= 0f || factor > MaxDamage)
                         return usage + L.T($" (between 0 and {MaxDamage})", $" (entre 0 et {MaxDamage})");
+                    if (a.Length == 2 && FromServerFile(sender)) return usage + L.T(" (from the server, name a player)", " (depuis le serveur, nomme un joueur)");
                     long uid = sender;
                     string name = admin;
                     ZNetPeer peer = ZNet.instance.GetPeer(sender);

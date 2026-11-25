@@ -14,6 +14,7 @@ La description publique (fonctionnement, commandes, journal, config) est dans
 | `src/Patches.cs` | Patches Harmony (démarrage, console, déconnexion, sauvegarde, mort) |
 | `src/Commands.cs` | Commandes `adm:*` de la console F5 |
 | `src/Server.cs` | Côté serveur : journal, archivage, droits admin, exécution des commandes |
+| `src/ServerInbox.cs` | Côté serveur : commandes déposées dans `commands.txt`, dons en attente pour les absents |
 | `src/Client.cs` | Côté joueur : suivi de l'inventaire, tp, give |
 | `thunderstore/` | Manifeste, icône, README et changelog du paquet |
 | `thunderstore.toml` | Configuration de publication (`tcli`) |
